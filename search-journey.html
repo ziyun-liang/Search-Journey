@@ -1,0 +1,3221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Search Journey Prototype</title>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TPL Design Tokens (fonts, colors, spacing, typography)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<link rel="stylesheet" href="/Users/lindseyliang/Desktop/QuickStart/tpl/tokens.css" />
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Base Styles
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: #f5f5f5;
+  font-family: var(--font-franklin);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+</style>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Sidebar Styles
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<style>
+#sidebar {
+  width: 240px;
+  min-width: 240px;
+  height: 100vh;
+  background: var(--card-bg);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 20px 20px;
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-family: var(--font-cheltenham);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.sidebar-subtitle {
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+#sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+
+.sidebar-item:hover {
+  background: #f5f5f5;
+}
+
+.sidebar-item.active {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+.sidebar-item .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-item .status-dot.ready { background: #2a9d6e; }
+.sidebar-item .status-dot.empty { background: #e6a117; }
+
+.sidebar-section {
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 16px 12px 6px;
+}
+</style>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Main Area + Toggle Bar
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<style>
+#main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+#toggle-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 0 0;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  transition: background 0.15s, color 0.15s;
+}
+.toggle-btn:hover { background: rgba(0,0,0,0.06); color: #666; }
+.toggle-btn.active { background: rgba(0,0,0,0.08); color: var(--ink); }
+.toggle-btn svg {
+  width: 20px; height: 20px;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+}
+</style>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Device Frames
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<style>
+#frame-area {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  padding: 16px 24px 24px;
+}
+
+#device-wrapper {
+  transform-origin: top center;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#device-frame {
+  background: var(--card-bg);
+  position: relative;
+  overflow: hidden;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mode-mobile #device-frame {
+  border-radius: 44px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+}
+.mode-desktop #device-frame {
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.phone-chrome { transition: opacity 0.3s ease; }
+.mode-desktop .phone-chrome { opacity: 0; pointer-events: none; }
+
+.phone-status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  padding: 14px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  background: var(--card-bg);
+  font: 600 15px/1 -apple-system, 'SF Pro Text', sans-serif;
+  color: #000;
+  transition: background 0.3s, color 0.3s, opacity 0.3s;
+}
+.phone-status-bar .status-icons { display: flex; align-items: center; gap: 5px; }
+.phone-status-bar .status-icons svg { width: 18px; height: 12px; }
+
+.phone-home-indicator {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 40;
+  background: transparent;
+}
+.phone-home-indicator::after {
+  content: '';
+  width: 134px; height: 5px;
+  background: #333;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+#content-scroll {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mode-mobile #content-scroll { padding: 54px 0 34px; }
+.mode-desktop #content-scroll { padding: 48px 48px; }
+
+/* When bottom nav is present */
+.has-bottom-nav .mode-mobile #content-scroll,
+#prototype-content.has-bottom-nav ~ .phone-home-indicator { }
+</style>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Shared Prototype Content Styles
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<style>
+#prototype-content {
+  font-family: var(--font-franklin);
+  color: var(--ink);
+}
+
+/* ── NYT Nav bar ── */
+.nyt-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e2e2e2;
+}
+.nyt-nav button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+.nyt-logo-img {
+  display: block;
+  height: 27px;
+  width: auto;
+}
+
+/* ── Placeholder for empty entry points ── */
+.entry-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+  gap: 12px;
+  min-height: 400px;
+}
+.entry-placeholder .ep-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.entry-placeholder .ep-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.entry-placeholder h2 {
+  font: var(--tpl-type-headline-24);
+  color: var(--tpl-content-primary);
+}
+.entry-placeholder p {
+  font: var(--tpl-type-body-16);
+  color: var(--tpl-content-secondary);
+  max-width: 280px;
+}
+.entry-placeholder .ep-tag {
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+.ep-tag.ready { background: #e8f5e9; color: #2a9d6e; }
+.ep-tag.todo { background: #fff3e0; color: #e6a117; }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 82px;
+  border-top: 0.5px solid var(--stroke-tertiary);
+  background: rgba(255,255,255,0.98);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 4px;
+  z-index: 35;
+  transition: opacity 0.3s;
+}
+.mode-desktop .bottom-nav { opacity: 0; pointer-events: none; }
+
+.tab-item {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--content-secondary-dim);
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: normal;
+  letter-spacing: 0.3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 52px;
+  cursor: pointer;
+}
+.tab-icon { width: 24px; height: 24px; display: block; }
+.tab-item.active { color: var(--content-primary); }
+
+/* ── Home Tab specific ── */
+.topbar {
+  position: absolute;
+  top: 54px; left: 0; right: 0;
+  height: 45px;
+  border-bottom: 1px solid #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  z-index: 9;
+}
+.mode-desktop .topbar { opacity: 0; pointer-events: none; }
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  width: 24px; height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--content-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.logo { width: 182px; height: auto; display: block; }
+
+.ribbon {
+  position: absolute;
+  top: 99px; left: 0; right: 0;
+  height: 49px;
+  border-bottom: 1px solid #f2f2f2;
+  background: #fff;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  z-index: 8;
+}
+.ribbon::-webkit-scrollbar { display: none; }
+.mode-desktop .ribbon { opacity: 0; pointer-events: none; }
+
+.ribbon-track {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+.ribbon-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 10px;
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--content-secondary-dim);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ribbon-item.selected {
+  font-weight: 600;
+  color: var(--content-primary);
+  border-bottom: 4px solid var(--content-primary);
+  padding-top: 2px;
+}
+
+/* ── Story list (Home tab) ── */
+.story-list { padding: 12px 0 32px; }
+.story-item { padding: 0 20px; }
+.story-rule { height: 1px; background: var(--stroke-tertiary); }
+.story-body { padding: 12px 0 24px; }
+.story-content { display: flex; flex-direction: column; gap: 8px; }
+.story-content-media { display: flex; flex-direction: column; gap: 16px; }
+.story-row { display: flex; gap: 16px; align-items: flex-start; }
+.story-row .story-content { flex: 1; min-width: 0; }
+
+.headline-lead { margin: 0; font-family: var(--font-cheltenham); font-weight: 700; font-size: 28px; line-height: 1.15; color: var(--content-primary); }
+.headline-large { margin: 0; font-family: var(--font-cheltenham); font-weight: 700; font-size: 26px; line-height: 1.15; color: var(--content-primary); }
+.headline-standard { margin: 0; font-family: var(--font-cheltenham); font-weight: 700; font-size: 20px; line-height: 1.15; letter-spacing: 0.2px; color: var(--content-primary); }
+.summary { margin: 0; font-family: var(--font-imperial); font-weight: 400; font-size: 16px; line-height: 1.39; color: var(--content-secondary); }
+.meta { margin: 0; font-family: var(--font-franklin); font-weight: 500; font-size: 11px; line-height: 1.25; letter-spacing: 1.1px; text-transform: uppercase; color: var(--content-secondary); }
+.top-label { margin: 0; font-family: var(--font-franklin); font-weight: 600; font-size: 11px; line-height: 1.25; letter-spacing: 1.1px; text-transform: uppercase; color: var(--content-primary); }
+.top-label .label-secondary { color: var(--content-secondary-dim); }
+
+.story-image { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+.thumb { width: 95px; height: 95px; object-fit: cover; flex-shrink: 0; }
+
+/* ── Article styles ── */
+.article-wrap { padding: 20px 20px 40px; display: flex; flex-direction: column; gap: 20px; }
+.article-headline { font-family: var(--font-cheltenham); font-weight: 700; font-size: 36px; line-height: 40px; color: #121212; }
+.article-dek { font-family: var(--font-cheltenham); font-weight: 400; font-size: 21px; line-height: 27px; color: #121212; }
+.article-body { font-family: var(--font-imperial); font-weight: 400; font-size: 18px; line-height: 25px; color: #333; }
+.article-body p { margin-bottom: 12.5px; }
+.article-divider { border: none; border-top: 1px solid #e2e2e2; margin: 0; }
+.byline-text { font-family: var(--font-franklin); font-weight: 500; font-size: 12px; line-height: 1.3; color: #121212; }
+.byline-name { font-weight: 700; }
+.article-date { font-family: var(--font-franklin); font-weight: 500; font-size: 12px; line-height: 1.3; color: #121212; }
+
+/* ── You Tab styles ── */
+.you-header { padding: 7px 20px 16px; position: relative; }
+.you-title { margin: 0; font-family: var(--font-cheltenham); font-weight: 500; font-size: 28px; line-height: 1.15; color: var(--content-primary); }
+.you-subtitle { margin: 0; font-family: var(--font-cheltenham); font-weight: 400; font-size: 28px; line-height: 1.15; color: var(--content-secondary-dim); }
+.you-modules { padding: 0 20px; display: flex; flex-direction: column; gap: 42px; }
+.module-title { margin: 0; font-family: var(--font-franklin); font-weight: 700; font-size: 18px; line-height: 1.3; color: var(--content-primary); }
+.module-subtitle { margin: 0; font-family: var(--font-franklin); font-weight: 500; font-size: 14px; line-height: 1.3; color: var(--content-secondary); }
+.story-title { margin: 0; font-family: var(--font-cheltenham); font-weight: 500; font-size: 18px; line-height: 1.2; letter-spacing: 0.18px; color: var(--content-primary); }
+.story-meta { margin: 0; font-family: var(--font-franklin); font-weight: 500; font-size: 11px; line-height: 1.25; letter-spacing: 1.1px; text-transform: uppercase; color: var(--content-secondary-dim); }
+.story-text { width: 244px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
+.story-thumb { width: 95px; height: 95px; object-fit: cover; flex-shrink: 0; }
+.module-items { display: flex; flex-direction: column; gap: 12px; }
+.module-header { display: flex; flex-direction: column; gap: 12px; }
+.see-all { display: inline-block; font-family: var(--font-franklin); font-weight: 600; font-size: 14px; color: var(--content-primary); text-decoration: underline; opacity: 0.8; cursor: pointer; background: none; border: none; padding: 12px 0; }
+.caret-icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
+.caret-icon svg { width: 7px; height: 12px; fill: none; stroke: var(--content-primary); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.module-title-row { display: flex; align-items: center; gap: 3px; }
+
+/* ── Search Overlay ── */
+.search-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #fff;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.search-overlay.visible {
+  transform: translateY(0);
+}
+
+.search-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 58px 16px 12px;
+  border-bottom: 1px solid #f2f2f2;
+  flex-shrink: 0;
+}
+
+.search-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+.search-back-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.search-input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #e2e2e2;
+  border-radius: 20px;
+  padding: 0 16px;
+  font-family: var(--font-franklin);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--content-primary);
+  background: #f8f8f8;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.search-input:focus {
+  border-color: #121212;
+  background: #fff;
+}
+.search-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.search-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.search-section-label {
+  font-family: var(--font-franklin);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--content-primary);
+  margin-bottom: 12px;
+}
+
+.try-asking-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.try-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8f8f8;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: var(--font-franklin);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--content-primary);
+  line-height: 1.4;
+  text-align: left;
+}
+.try-chip:hover {
+  background: #f0f0f0;
+}
+.try-chip .chip-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  font-family: var(--font-franklin);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--content-primary);
+  transition: color 0.12s;
+}
+.recent-item:hover {
+  color: #666;
+}
+.recent-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #bbb;
+}
+
+.trending-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.trending-pill {
+  padding: 8px 14px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-franklin);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--content-primary);
+  transition: background 0.12s;
+}
+.trending-pill:hover {
+  background: #e8e8e8;
+}
+
+/* ── Floating Action Button (search, light style) ── */
+.search-fab {
+  position: absolute;
+  bottom: 48px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  z-index: 30;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.15s;
+}
+.search-fab:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  background: #f8f8f8;
+}
+.search-fab:active {
+  transform: scale(0.95);
+}
+.search-fab svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Two-prompt popup (fork from FAB) ── */
+.fab-menu {
+  position: absolute;
+  bottom: 104px;
+  right: 20px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.14);
+  border: 1px solid #eee;
+  z-index: 31;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  width: 220px;
+}
+.fab-menu.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-franklin);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--content-primary);
+  text-align: left;
+  transition: background 0.1s;
+}
+.fab-menu-item:hover {
+  background: #f5f5f5;
+}
+.fab-menu-item + .fab-menu-item {
+  border-top: 1px solid #f2f2f2;
+}
+.fab-menu-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #666;
+}
+
+/* ── Ask sheet (article contextual, half-height) ── */
+.ask-sheet-scrim {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 49;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.ask-sheet-scrim.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ask-sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 50%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ask-sheet.visible {
+  transform: translateY(0);
+}
+
+.ask-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #d4d4d4;
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+.chat-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 12px;
+  border-bottom: 1px solid #f2f2f2;
+  flex-shrink: 0;
+}
+
+.chat-overlay-title {
+  font-family: var(--font-franklin);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--content-primary);
+  flex: 1;
+}
+
+.chat-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.chat-context-card {
+  padding: 14px;
+  background: #f8f8f8;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.chat-context-card .ctx-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e3f2fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-context-card .ctx-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.chat-context-card .ctx-text {
+  font-family: var(--font-franklin);
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+}
+.chat-context-card .ctx-text strong {
+  color: var(--content-primary);
+}
+
+.chat-input-area {
+  padding: 12px 16px;
+  border-top: 1px solid #f2f2f2;
+  flex-shrink: 0;
+}
+.chat-input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #e2e2e2;
+  border-radius: 20px;
+  padding: 0 16px;
+  font-family: var(--font-franklin);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--content-primary);
+  background: #f8f8f8;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.chat-input:focus {
+  border-color: #121212;
+  background: #fff;
+}
+.chat-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+/* ── Article bottom bar (persistent utility bar) ── */
+.article-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 50px;
+  background: #fff;
+  border-top: 1px solid #e2e2e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 35;
+}
+.article-bar-left,
+.article-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.article-bar-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.12s;
+  padding: 0;
+}
+.article-bar-btn:hover {
+  background: #f5f5f5;
+}
+.article-bar-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Contextual search strip ── */
+.ctx-strip {
+  position: absolute;
+  left: 12px; right: 12px;
+  bottom: 54px;
+  height: 37px;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  cursor: pointer;
+  z-index: 34;
+  transition: background 0.12s;
+}
+.ctx-strip:hover {
+  background: rgba(255,255,255,0.7);
+}
+.ctx-strip svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #666;
+}
+.ctx-strip-text {
+  font-family: var(--font-franklin);
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-strip-text strong {
+  color: var(--content-primary);
+}
+.ctx-strip-caret {
+  font-size: 14px;
+  color: #bbb;
+  flex-shrink: 0;
+}
+
+/* ── Selection-active strip state ── */
+@keyframes strip-pulse {
+  0% { background: rgba(74,127,212,0.15); }
+  100% { background: rgba(255,255,255,0.55); }
+}
+.ctx-strip.selection-active {
+  animation: strip-pulse 0.6s ease-out;
+}
+.ctx-strip.selection-active svg {
+  color: #4a7fd4;
+}
+.ctx-strip.selection-active .ctx-strip-text {
+  color: #4a7fd4;
+}
+.ctx-strip.selection-active .ctx-strip-text strong {
+  color: #4a7fd4;
+}
+
+/* ── Dark mode contextual strip (for Watch) ── */
+.ctx-strip.dark {
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12);
+  left: 16px; right: 60px;
+  bottom: 98px;
+}
+.ctx-strip.dark:hover {
+  background: rgba(0,0,0,0.65);
+}
+.ctx-strip.dark svg {
+  color: rgba(255,255,255,0.6);
+}
+.ctx-strip.dark .ctx-strip-text {
+  color: rgba(255,255,255,0.6);
+}
+.ctx-strip.dark .ctx-strip-text strong {
+  color: #f8f8f8;
+}
+.ctx-strip.dark .ctx-strip-caret {
+  color: rgba(255,255,255,0.4);
+}
+
+/* ── Dark strip pulse (timeline-aware update) ── */
+@keyframes dark-strip-pulse {
+  0% { background: rgba(74,127,212,0.25); }
+  100% { background: rgba(0,0,0,0.5); }
+}
+.ctx-strip.dark.strip-updated {
+  animation: dark-strip-pulse 0.8s ease-out;
+}
+.ctx-strip.dark.strip-updated svg {
+  color: #6b9be8;
+  transition: color 0.8s ease-out;
+}
+.ctx-strip.dark.strip-updated .ctx-strip-text {
+  color: #6b9be8;
+  transition: color 0.8s ease-out;
+}
+.ctx-strip.dark.strip-updated .ctx-strip-text strong {
+  color: #6b9be8;
+}
+
+/* ── Dark mode bottom nav (for Watch) ── */
+.bottom-nav.dark {
+  background: rgba(18,18,18,1);
+  border-top-color: #424242;
+}
+.bottom-nav.dark .tab-item {
+  color: #8b8b8b;
+}
+.bottom-nav.dark .tab-item.active {
+  color: #f8f8f8;
+}
+.bottom-nav.dark .tab-item .tab-icon {
+  filter: none;
+}
+.bottom-nav.dark .tab-item:not(.active) .tab-icon {
+  opacity: 0.5;
+}
+.bottom-nav.dark .tab-item.active .tab-icon {
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
+
+/* ── Dark mode ask sheet ── */
+.ask-sheet.dark {
+  background: #1a1a1a;
+  border-radius: 16px 16px 0 0;
+}
+.ask-sheet.dark .ask-sheet-handle {
+  background: #555;
+}
+.ask-sheet.dark .chat-overlay-header {
+  border-bottom-color: #333;
+}
+.ask-sheet.dark .chat-overlay-title {
+  color: #f8f8f8;
+}
+.ask-sheet.dark .chat-context-card {
+  background: #2a2a2a;
+}
+.ask-sheet.dark .ctx-text {
+  color: #aaa;
+}
+.ask-sheet.dark .ctx-text strong {
+  color: #f8f8f8;
+}
+.ask-sheet.dark .try-chip {
+  background: #2a2a2a;
+  border-color: #333;
+  color: #f8f8f8;
+}
+.ask-sheet.dark .try-chip:hover {
+  background: #333;
+}
+.ask-sheet.dark .chat-input-area {
+  border-top-color: #333;
+}
+.ask-sheet.dark .chat-input {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #f8f8f8;
+}
+.ask-sheet.dark .chat-input:focus {
+  border-color: #888;
+  background: #1a1a1a;
+}
+.ask-sheet.dark .chat-input::placeholder {
+  color: #777;
+}
+
+/* ── Watch tab: full-screen video ── */
+.watch-video {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 82px;
+  background: #000;
+  overflow: hidden;
+}
+.watch-video-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.watch-gradient {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 180px;
+  background: linear-gradient(to top, rgba(0,0,0,0.81), rgba(0,0,0,0));
+  pointer-events: none;
+}
+.watch-headline {
+  position: absolute;
+  left: 16px; right: 60px;
+  bottom: 68px;
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #f8f8f8;
+  text-shadow: 0 0 1px rgba(0,0,0,0.79), 0 0 2px rgba(0,0,0,0.79);
+}
+.watch-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.watch-ctrl-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(18,18,18,0.6);
+  border: 1px solid #424242;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.watch-ctrl-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.watch-scrubber {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: rgba(248,248,248,0.32);
+}
+.watch-scrubber-progress {
+  height: 100%;
+  width: 0%;
+  background: #f8f8f8;
+  animation: scrubber-play 24s linear infinite;
+}
+@keyframes scrubber-play {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* ── Dark status bar override ── */
+.dark-status .phone-status-bar {
+  background: transparent;
+  color: #dfdfdf;
+}
+.dark-status .phone-status-bar .status-icons svg {
+  color: #dfdfdf;
+}
+
+/* ── Podcast player ── */
+.podcast-artwork {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  background: linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #2c3e50 100%);
+  overflow: hidden;
+}
+.podcast-artwork-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+}
+.podcast-artwork-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.podcast-show-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.podcast-artwork-strip {
+  position: absolute;
+  bottom: 12px;
+  left: 68px;
+  right: 12px;
+  height: 37px;
+  background: rgba(255,255,255,0.47);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.podcast-artwork-strip:hover {
+  background: rgba(255,255,255,0.6);
+}
+.podcast-artwork-strip svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.podcast-artwork-strip-text {
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Podcast strip pulse (timeline-aware update) ── */
+@keyframes podcast-strip-pulse {
+  0% { background: rgba(74,127,212,0.5); }
+  100% { background: rgba(255,255,255,0.47); }
+}
+.podcast-artwork-strip.strip-updated {
+  animation: podcast-strip-pulse 0.8s ease-out;
+}
+
+.podcast-player {
+  padding: 20px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.podcast-show-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.podcast-show-info-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.podcast-show-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.podcast-show-date { color: var(--content-secondary); }
+.podcast-show-name { color: var(--content-primary); }
+
+.podcast-episode-title {
+  font-family: var(--font-cheltenham);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0.24px;
+  color: #121212;
+}
+
+.podcast-scrubber {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.podcast-scrubber-bar {
+  height: 4px;
+  background: rgba(18,18,18,0.16);
+  border-radius: 100px;
+  position: relative;
+}
+.podcast-scrubber-elapsed {
+  height: 100%;
+  width: 0%;
+  background: #121212;
+  border-radius: 100px;
+  animation: podcast-elapsed 24s linear infinite;
+}
+@keyframes podcast-elapsed {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+.podcast-scrubber-times {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 12px;
+  color: #363636;
+}
+
+.podcast-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+.podcast-ctrl-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+}
+.podcast-ctrl-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.podcast-ctrl-btn.play-btn {
+  width: 48px;
+  height: 48px;
+}
+.podcast-ctrl-btn.play-btn svg {
+  width: 38px;
+  height: 38px;
+}
+
+.podcast-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  padding: 8px 0;
+  background: #f8f8f8;
+  border-radius: 5px;
+}
+.podcast-secondary-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 16px;
+  color: #121212;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+.podcast-secondary-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.podcast-queue-label {
+  font-family: var(--font-franklin);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--content-primary);
+  padding: 24px 0 12px;
+}
+
+.podcast-queue-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.podcast-queue-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.podcast-queue-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.podcast-queue-show {
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--content-primary);
+}
+.podcast-queue-title {
+  font-family: var(--font-cheltenham);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--content-primary);
+}
+.podcast-queue-dur {
+  font-family: var(--font-franklin);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--content-primary);
+}
+
+/* ── Overview page (no device frame) ── */
+.overview-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+  font-family: var(--font-franklin);
+  color: #121212;
+}
+.overview-page h1 {
+  font-family: var(--font-cheltenham);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+.overview-page .ov-subtitle {
+  font-size: 16px;
+  font-weight: 400;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 40px;
+}
+.overview-page h2 {
+  font-family: var(--font-franklin);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #121212;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #121212;
+}
+.overview-page p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 16px;
+}
+.ov-layer {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.ov-layer-card {
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+}
+.ov-layer-card h3 {
+  font-family: var(--font-franklin);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ov-layer-card h3 svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.ov-layer-card p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.ov-example {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.6;
+}
+.ov-example strong {
+  color: #555;
+}
+.ov-surface-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 32px;
+}
+.ov-surface-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #999;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e2e2;
+}
+.ov-surface-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid #f2f2f2;
+  vertical-align: top;
+  color: #333;
+}
+.ov-surface-table td:first-child {
+  font-weight: 600;
+  color: #121212;
+  width: 120px;
+}
+.ov-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ov-tag.universal { background: #e3f2fd; color: #4a7fd4; }
+.ov-tag.contextual { background: #e8f5e9; color: #2a9d6e; }
+</style>
+
+</head>
+<body>
+
+<div id="app" class="mode-mobile">
+
+  <!-- ━━━ Sidebar ━━━ -->
+  <div id="sidebar">
+    <div class="sidebar-title">Search Journey</div>
+    <div class="sidebar-subtitle">Entry points for NYT search</div>
+    <ul id="sidebar-list"></ul>
+  </div>
+
+  <!-- ━━━ Main Area ━━━ -->
+  <div id="main-area">
+
+    <!-- Toggle Bar -->
+    <div id="toggle-bar">
+      <button class="toggle-btn" id="btn-desktop" title="Desktop view (D)" aria-label="Desktop view">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </button>
+      <button class="toggle-btn active" id="btn-mobile" title="Mobile view (M)" aria-label="Mobile view">
+        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Frame Area -->
+    <div id="frame-area">
+      <div id="device-wrapper">
+        <div id="device-frame">
+
+          <!-- Phone chrome: status bar -->
+          <div class="phone-chrome phone-status-bar">
+            <span>9:41</span>
+            <span class="status-icons">
+              <svg viewBox="0 0 18 12"><path d="M1 9.5h1.5v2H1zM4.5 7h1.5v4.5H4.5zM8 4.5h1.5v7H8zM11.5 2h1.5v9.5h-1.5z" fill="currentColor" stroke="none"/></svg>
+              <svg viewBox="0 0 16 12"><path d="M8 3.6C5.4 3.6 3.1 4.7 1.5 6.5L0 5c2-2.2 4.8-3.5 8-3.5s6 1.3 8 3.5l-1.5 1.5C12.9 4.7 10.6 3.6 8 3.6zm0 4c-1.5 0-2.9.6-3.9 1.6L2.6 7.7c1.4-1.4 3.3-2.1 5.4-2.1s4 .8 5.4 2.1l-1.5 1.5c-1-.9-2.4-1.6-3.9-1.6zM8 11a2 2 0 110-4 2 2 0 010 4z" fill="currentColor" stroke="none"/></svg>
+              <svg viewBox="0 0 28 13"><rect x="0.5" y="0.5" width="23" height="12" rx="2" stroke="currentColor" fill="none" stroke-width="1"/><rect x="25" y="3.5" width="2" height="5.5" rx="1" fill="currentColor" stroke="none"/><rect x="2" y="2" width="18" height="9" rx="1" fill="currentColor" stroke="none"/></svg>
+            </span>
+          </div>
+
+          <!-- Scrollable content area -->
+          <div id="content-scroll">
+            <div id="prototype-content"></div>
+          </div>
+
+          <!-- Phone chrome: home indicator -->
+          <div class="phone-chrome phone-home-indicator"></div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Hub Registry + Device Frame JS
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  // ━━━ Registry ━━━
+  var registry = [];
+  var activeId = null;
+  var contentEl = document.getElementById('prototype-content');
+  var scrollEl = document.getElementById('content-scroll');
+  var listEl = document.getElementById('sidebar-list');
+
+  window.__registerPrototype = function (entry) {
+    registry.push(entry);
+  };
+
+  window.__findPrototype = function (id) {
+    for (var i = 0; i < registry.length; i++) {
+      if (registry[i].id === id) return registry[i];
+    }
+    return null;
+  };
+
+  function activatePrototype(id) {
+    if (activeId === id) return;
+
+    var current = window.__findPrototype(activeId);
+    if (current && current.unmount) current.unmount();
+
+    contentEl.innerHTML = '';
+    contentEl.className = '';
+    scrollEl.scrollTop = 0;
+
+    var next = window.__findPrototype(id);
+    activeId = id;
+    if (next && next.mount) next.mount(contentEl, scrollEl);
+
+    var items = listEl.querySelectorAll('.sidebar-item');
+    for (var k = 0; k < items.length; k++) {
+      items[k].classList.toggle('active', items[k].getAttribute('data-proto-id') === id);
+    }
+  }
+
+  window.__initPrototypeHub = function () {
+    listEl.innerHTML = '';
+    for (var i = 0; i < registry.length; i++) {
+      if (registry[i].hidden) continue;
+
+      if (registry[i].section) {
+        var sec = document.createElement('li');
+        sec.className = 'sidebar-section';
+        sec.textContent = registry[i].section;
+        listEl.appendChild(sec);
+      }
+
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.className = 'sidebar-item';
+      btn.setAttribute('data-proto-id', registry[i].id);
+
+      if (!registry[i].noDot) {
+        var dot = document.createElement('span');
+        dot.className = 'status-dot ' + (registry[i].status || 'ready');
+        btn.appendChild(dot);
+      }
+
+      var label = document.createTextNode(registry[i].label);
+      btn.appendChild(label);
+
+      btn.addEventListener('click', (function (id) {
+        return function () { activatePrototype(id); };
+      })(registry[i].id));
+
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    }
+
+    if (registry.length > 0) {
+      activatePrototype(registry[0].id);
+    }
+  };
+
+  // ━━━ Device Frame ━━━
+  var app = document.getElementById('app');
+  var btnDesktop = document.getElementById('btn-desktop');
+  var btnMobile = document.getElementById('btn-mobile');
+  var wrapper = document.getElementById('device-wrapper');
+  var frame = document.getElementById('device-frame');
+  var frameArea = document.getElementById('frame-area');
+
+  var PHONE_W = 393;
+  var PHONE_H = 852;
+  var VERTICAL_PAD = 64;
+
+  function getPhoneScale() {
+    var availW = Math.max(200, frameArea.clientWidth - 48);
+    var availH = Math.max(300, frameArea.clientHeight - VERTICAL_PAD);
+    var scale = Math.min(0.92, availW / PHONE_W, availH / PHONE_H);
+    return Math.max(0.3, scale);
+  }
+
+  function getDesktopSize() {
+    return {
+      w: Math.min(900, frameArea.clientWidth - 48),
+      h: frameArea.clientHeight - 72
+    };
+  }
+
+  function setMode(mode) {
+    if (mode === 'desktop') {
+      app.classList.remove('mode-mobile');
+      app.classList.add('mode-desktop');
+      btnDesktop.classList.add('active');
+      btnMobile.classList.remove('active');
+      var sz = getDesktopSize();
+      frame.style.width = sz.w + 'px';
+      frame.style.height = sz.h + 'px';
+      wrapper.style.transform = 'scale(1)';
+    } else {
+      app.classList.remove('mode-desktop');
+      app.classList.add('mode-mobile');
+      btnMobile.classList.add('active');
+      btnDesktop.classList.remove('active');
+      frame.style.width = PHONE_W + 'px';
+      frame.style.height = PHONE_H + 'px';
+      wrapper.style.transform = 'scale(' + getPhoneScale() + ')';
+    }
+  }
+
+  window.__setDeviceMode = setMode;
+
+  btnDesktop.addEventListener('click', function () { setMode('desktop'); });
+  btnMobile.addEventListener('click', function () { setMode('mobile'); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    if (e.key === 'd' || e.key === 'D') setMode('desktop');
+    if (e.key === 'm' || e.key === 'M') setMode('mobile');
+  });
+
+  window.addEventListener('resize', function () {
+    if (app.classList.contains('mode-mobile')) {
+      wrapper.style.transform = 'scale(' + getPhoneScale() + ')';
+    } else {
+      var sz = getDesktopSize();
+      frame.style.width = sz.w + 'px';
+      frame.style.height = sz.h + 'px';
+    }
+  });
+
+  frame.style.width = PHONE_W + 'px';
+  frame.style.height = PHONE_H + 'px';
+  wrapper.style.transform = 'scale(' + getPhoneScale() + ')';
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Approach Overview
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  window.__registerPrototype({
+    id: 'approach',
+    label: 'Approach',
+    noDot: true,
+    section: 'Overview',
+    mount: function (contentEl, scrollEl) {
+      scrollEl.style.paddingTop = '0';
+      scrollEl.style.paddingBottom = '0';
+
+      // Hide device frame — render directly on canvas
+      var deviceFrame = document.getElementById('device-frame');
+      var wrapper = document.getElementById('device-wrapper');
+      var frameArea = document.getElementById('frame-area');
+      var toggleBar = document.getElementById('toggle-bar');
+      deviceFrame.style.cssText = 'width:100% !important;height:100% !important;background:transparent;box-shadow:none;border-radius:0;';
+      wrapper.style.cssText = 'transform:none !important;width:100%;height:100%;';
+      frameArea.style.cssText = 'padding:0;';
+      if (toggleBar) toggleBar.style.display = 'none';
+      var statusBar = deviceFrame.querySelector('.phone-status-bar');
+      var homeIndicator = deviceFrame.querySelector('.phone-home-indicator');
+      if (statusBar) statusBar.style.display = 'none';
+      if (homeIndicator) homeIndicator.style.display = 'none';
+
+      contentEl.innerHTML = ''
+        + '<div class="overview-page">'
+        + '  <h1>Search Journey</h1>'
+        + '  <p class="ov-subtitle">How search works across every NYT surface — a two-layer system that keeps universal search consistent while adapting contextually to where you are.</p>'
+
+        + '  <h2>The Two Layers</h2>'
+        + '  <div class="ov-layer">'
+        + '    <div class="ov-layer-card">'
+        + '      <h3><svg viewBox="0 0 24 24" fill="none" stroke="#4a7fd4" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>Universal Search</h3>'
+        + '      <p>Always available, always the same. One tap opens a full-screen search experience with a smart input that handles both keyword search and natural language questions.</p>'
+        + '      <div class="ov-example"><strong>Entry point:</strong> Search icon in bottom nav, or search icon in article bottom bar<br/><strong>Experience:</strong> Full-screen overlay — search bar, try asking chips, recent searches, trending</div>'
+        + '    </div>'
+        + '    <div class="ov-layer-card">'
+        + '      <h3><svg viewBox="0 0 24 24" fill="none" stroke="#2a9d6e" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>Contextual Search</h3>'
+        + '      <p>Unique to each surface. A persistent strip that knows what you\u2019re reading, watching, or listening to. Opens a focused half-sheet for asking about the current content.</p>'
+        + '      <div class="ov-example"><strong>Entry point:</strong> \u201cSearch \u00b7 [topic]\u201d strip on the current surface<br/><strong>Experience:</strong> Half-height sheet — context card, suggested questions, text input</div>'
+        + '    </div>'
+        + '  </div>'
+
+        + '  <h2>How It Works Per Surface</h2>'
+        + '  <table class="ov-surface-table">'
+        + '    <thead><tr><th>Surface</th><th>Universal</th><th>Contextual</th></tr></thead>'
+        + '    <tbody>'
+        + '      <tr><td>Home Tab</td><td><span class="ov-tag universal">Search tab</span> in bottom nav</td><td>\u2014</td></tr>'
+        + '      <tr><td>Article</td><td><span class="ov-tag universal">Search icon</span> in bottom bar</td><td><span class="ov-tag contextual">Strip</span> \u201cSearch \u00b7 Noma restaurant abuse\u201d</td></tr>'
+        + '      <tr><td>For You</td><td><span class="ov-tag universal">Search tab</span> in bottom nav</td><td>\u2014</td></tr>'
+        + '      <tr><td>Search Page</td><td>Is the universal search</td><td>\u2014</td></tr>'
+        + '      <tr><td>Video / Watch</td><td><span class="ov-tag universal">Search tab</span> in bottom nav</td><td><span class="ov-tag contextual">Strip</span> \u201cSearch \u00b7 US attack on Iran\u201d</td></tr>'
+        + '      <tr><td>Podcast</td><td><span class="ov-tag universal">Search tab</span> in bottom nav</td><td><span class="ov-tag contextual">Strip</span> in artwork area</td></tr>'
+        + '    </tbody>'
+        + '  </table>'
+
+        + '  <h2>One Smart Input</h2>'
+        + '  <p>The universal search bar handles both traditional keyword search and natural language questions through a single input. The existing intent router classifies queries and routes to the right experience — no mode picker, just one input that\u2019s smarter than a search bar.</p>'
+        + '  <div class="ov-layer" style="margin-bottom:0;">'
+        + '    <div class="ov-layer-card" style="background:#f8f8f8;border:none;">'
+        + '      <div class="ov-example" style="background:#fff;margin-top:0;">'
+        + '        <strong>\u201cTrump tariffs\u201d</strong> \u2192 Find mode \u2192 topic results<br/>'
+        + '        <strong>\u201cWhy did the court block tariffs?\u201d</strong> \u2192 Ask mode \u2192 AI answer<br/>'
+        + '        <strong>\u201cI want something uplifting\u201d</strong> \u2192 Chat mode \u2192 recommendation'
+        + '      </div>'
+        + '    </div>'
+        + '  </div>'
+
+        + '</div>';
+    },
+    unmount: function () {
+      var deviceFrame = document.getElementById('device-frame');
+      var wrapper = document.getElementById('device-wrapper');
+      var frameArea = document.getElementById('frame-area');
+      var toggleBar = document.getElementById('toggle-bar');
+      deviceFrame.style.cssText = '';
+      wrapper.style.cssText = '';
+      frameArea.style.cssText = '';
+      if (toggleBar) toggleBar.style.display = '';
+      var statusBar = deviceFrame.querySelector('.phone-status-bar');
+      var homeIndicator = deviceFrame.querySelector('.phone-home-indicator');
+      if (statusBar) statusBar.style.display = '';
+      if (homeIndicator) homeIndicator.style.display = '';
+
+      var app = document.getElementById('app');
+      var currentMode = app.classList.contains('mode-desktop') ? 'desktop' : 'mobile';
+      window.__setDeviceMode(currentMode);
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 1: Home Tab
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+  var overlay = null;
+  var searchInput = null;
+  var searchOpen = false;
+  var searchTabBtn = null;
+  var homeTabBtn = null;
+
+  function showSearch() {
+    if (searchOpen) return;
+    searchOpen = true;
+    overlay.classList.add('visible');
+    if (searchTabBtn) searchTabBtn.classList.add('active');
+    if (homeTabBtn) homeTabBtn.classList.remove('active');
+    setTimeout(function () { searchInput.focus(); }, 320);
+  }
+
+  function hideSearch() {
+    if (!searchOpen) return;
+    searchOpen = false;
+    overlay.classList.remove('visible');
+    searchInput.value = '';
+    if (searchTabBtn) searchTabBtn.classList.remove('active');
+    if (homeTabBtn) homeTabBtn.classList.add('active');
+  }
+
+  function populateInput(text) {
+    searchInput.value = text;
+    searchInput.focus();
+  }
+
+  window.__registerPrototype({
+    id: 'home-tab',
+    label: 'Home Tab',
+    status: 'ready',
+    section: 'Entry Point Examples',
+    mount: function (contentEl, scrollEl) {
+      searchOpen = false;
+
+      scrollEl.style.padding = '';
+      document.querySelector('.mode-mobile #content-scroll') && (function () {
+        scrollEl.style.paddingTop = '148px';
+        scrollEl.style.paddingBottom = '82px';
+      })();
+
+      contentEl.innerHTML = ''
+        + '<div class="topbar" role="banner">'
+        + '  <img class="logo" src="' + ASSET_ROOT + 'NYT-logo.svg" alt="The New York Times" style="margin:0 auto;" />'
+        + '</div>'
+        + '<div class="ribbon"><div class="ribbon-track">'
+        + '  <a class="ribbon-item" href="#">Games</a><a class="ribbon-item" href="#">Audio</a><a class="ribbon-item" href="#">Wirecutter</a><a class="ribbon-item" href="#">Cooking</a><a class="ribbon-item" href="#">The Athletic</a><a class="ribbon-item selected" href="#">Today</a><a class="ribbon-item" href="#">Lifestyle</a><a class="ribbon-item" href="#">Opinion</a>'
+        + '</div></div>'
+        + '<div class="story-list">'
+        + '  <div class="story-item"><div class="story-body"><div class="story-content-media"><div class="story-content">'
+        + '    <h2 class="headline-lead">Judge Intends to Block Trump Effort to Stop Harvard From Enrolling Foreign Students</h2>'
+        + '    <p class="summary">The decision was a victory for Harvard in its ongoing confrontation with the White House.</p>'
+        + '    <p class="meta">5 min read</p>'
+        + '  </div><img class="story-image" src="' + ASSET_ROOT + 'Today-tab/Images/1.png" alt="" /></div></div></div>'
+        + '  <div class="story-item"><div class="story-rule"></div><div class="story-body"><div class="story-content">'
+        + '    <h3 class="headline-standard">Harvard Says Many of Its Foreign Students Are Seeking to Transfer</h3>'
+        + '    <p class="meta">2 min read</p>'
+        + '  </div></div></div>'
+        + '  <div class="story-item"><div class="story-rule"></div><div class="story-body"><div class="story-row">'
+        + '    <img class="thumb" src="' + ASSET_ROOT + 'Today-tab/Images/2.png" alt="" />'
+        + '    <div class="story-content"><p class="top-label">the daily <span class="label-secondary">audio</span></p>'
+        + '      <h3 class="headline-standard">Harvard Is Trying to Resist Trump. It Might Not Be Working.</h3>'
+        + '      <p class="meta">29 min listen</p>'
+        + '  </div></div></div></div>'
+        + '  <div class="story-item"><div class="story-rule"></div><div class="story-body"><div class="story-content-media"><div class="story-content">'
+        + '    <h2 class="headline-large">Frustration Grows in Israel Over Fate of Gaza Hostages</h2>'
+        + '    <p class="summary">Families and supporters have stepped up pressure on the Israeli government as negotiations drag on.</p>'
+        + '    <p class="meta">5 min read</p>'
+        + '  </div><img class="story-image" src="' + ASSET_ROOT + 'Today-tab/Images/3.png" alt="" /></div></div></div>'
+        + '  <div class="story-item"><div class="story-rule"></div><div class="story-body"><div class="story-content-media"><div class="story-content">'
+        + '    <h2 class="headline-large">White House Rushes to Preserve Tariff Power</h2>'
+        + '    <p class="summary">The Trump administration has asked that it be allowed to proceed with tariffs that a federal court declared were illegal.</p>'
+        + '    <p class="meta">5 min read</p>'
+        + '  </div><img class="story-image" src="' + ASSET_ROOT + 'Today-tab/Images/4.png" alt="" /></div></div></div>'
+        + '</div>';
+
+      // ── Search overlay ──
+      overlay = document.createElement('div');
+      overlay.className = 'search-overlay';
+      overlay.innerHTML = ''
+        + '<div class="search-overlay-header">'
+        + '  <button class="search-back-btn" aria-label="Close search">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>'
+        + '  </button>'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div class="search-overlay-body">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        What\u2019s the biggest news today?'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>'
+        + '        Explain the tariff court ruling'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="I want something uplifting to read">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        I want something uplifting to read'
+        + '      </button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs">'
+        + '        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>'
+        + '        Trump tariffs'
+        + '      </div>'
+        + '      <div class="recent-item" data-query="Harvard foreign students">'
+        + '        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>'
+        + '        Harvard foreign students'
+        + '      </div>'
+        + '      <div class="recent-item" data-query="Gaza hostage negotiations">'
+        + '        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>'
+        + '        Gaza hostage negotiations'
+        + '      </div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Trending</div>'
+        + '    <div class="trending-pills">'
+        + '      <button class="trending-pill" data-query="Noma restaurant">Noma restaurant</button>'
+        + '      <button class="trending-pill" data-query="DOGE layoffs">DOGE layoffs</button>'
+        + '      <button class="trending-pill" data-query="Climate FEMA">Climate FEMA</button>'
+        + '      <button class="trending-pill" data-query="Musk exits Washington">Musk exits Washington</button>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+
+      document.getElementById('device-frame').appendChild(overlay);
+      searchInput = overlay.querySelector('.search-input');
+
+      // Back button
+      overlay.querySelector('.search-back-btn').addEventListener('click', hideSearch);
+
+      // Try asking chips
+      overlay.querySelectorAll('.try-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          populateInput(chip.getAttribute('data-query'));
+        });
+      });
+
+      // Recent items
+      overlay.querySelectorAll('.recent-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          populateInput(item.getAttribute('data-query'));
+        });
+      });
+
+      // Trending pills
+      overlay.querySelectorAll('.trending-pill').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          populateInput(pill.getAttribute('data-query'));
+        });
+      });
+
+      // ── Bottom nav ──
+      var nav = document.createElement('nav');
+      nav.className = 'bottom-nav';
+      nav.setAttribute('aria-label', 'Primary');
+      nav.innerHTML = ''
+        + '<button class="tab-item active" data-tab="home"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/home.svg" alt="" /><span>Home</span></button>'
+        + '<button class="tab-item" data-tab="watch"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/watch.svg" alt="" /><span>Watch</span></button>'
+        + '<button class="tab-item" data-tab="listen"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/Listen.svg" alt="" /><span>Listen</span></button>'
+        + '<button class="tab-item" data-tab="you"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/you.svg" alt="" /><span>You</span></button>'
+        + '<button class="tab-item" data-tab="search"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg><span>Search</span></button>';
+      document.getElementById('device-frame').appendChild(nav);
+
+      // Wire search tab
+      searchTabBtn = nav.querySelector('[data-tab="search"]');
+      homeTabBtn = nav.querySelector('[data-tab="home"]');
+      searchTabBtn.addEventListener('click', function () {
+        if (searchOpen) {
+          hideSearch();
+        } else {
+          showSearch();
+        }
+      });
+
+      // Home tab returns to feed
+      homeTabBtn.addEventListener('click', function () {
+        if (searchOpen) hideSearch();
+      });
+    },
+    unmount: function () {
+      searchOpen = false;
+      overlay = null;
+      searchInput = null;
+      searchTabBtn = null;
+      homeTabBtn = null;
+      var nav = document.querySelector('.bottom-nav');
+      if (nav) nav.remove();
+      var ov = document.querySelector('.search-overlay');
+      if (ov) ov.remove();
+      var topbar = document.querySelector('.topbar');
+      if (topbar) topbar.remove();
+      var ribbon = document.querySelector('.ribbon');
+      if (ribbon) ribbon.remove();
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 2: Article
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+  var searchOverlay = null;
+  var askSheet = null;
+  var askScrim = null;
+  var searchInput = null;
+  var askInput = null;
+  var searchOpen = false;
+  var askOpen = false;
+
+  var strip = null;
+  var selectedText = '';
+  var selectionHandler = null;
+  var scrollHandler = null;
+  var DEFAULT_STRIP_TEXT = 'Noma restaurant abuse';
+
+  var SCROLL_PROMPTS = [
+    { threshold: 0, text: 'Noma restaurant abuse' },
+    { threshold: 200, text: 'What happened at Noma in 2014?' },
+    { threshold: 400, text: 'Is this common in fine dining?' }
+  ];
+
+  var KNOWN_ENTITIES = [
+    { match: /Ren\u00e9 Redzepi|Redzepi/i, type: 'person', label: 'Ren\u00e9 Redzepi',
+      chips: ['Who is Ren\u00e9 Redzepi?', 'More NYT coverage of Ren\u00e9 Redzepi', 'What has he said about this?'] },
+    { match: /Noma/i, type: 'place', label: 'Noma',
+      chips: ['What is Noma?', 'Where is Noma located?', 'NYT reviews of Noma'] },
+    { match: /Copenhagen/i, type: 'place', label: 'Copenhagen',
+      chips: ['What is Copenhagen known for?', 'NYT coverage of Copenhagen', 'Food scene in Copenhagen'] },
+    { match: /sous.chef/i, type: 'role', label: 'sous-chef',
+      chips: ['What does a sous-chef do?', 'Kitchen hierarchy explained', 'Fine dining work conditions'] }
+  ];
+
+  function getChipsForSelection(text) {
+    for (var i = 0; i < KNOWN_ENTITIES.length; i++) {
+      if (KNOWN_ENTITIES[i].match.test(text)) return KNOWN_ENTITIES[i].chips;
+    }
+    return [
+      'Tell me more about \u201c' + text.slice(0, 30) + '\u201d',
+      'Why is this significant?',
+      'Related NYT coverage'
+    ];
+  }
+
+  function truncate(text, max) {
+    if (text.length <= max) return text;
+    return text.slice(0, max) + '\u2026';
+  }
+
+  function updateStripText(html) {
+    if (!strip) return;
+    var textEl = strip.querySelector('.ctx-strip-text');
+    if (textEl) textEl.innerHTML = html;
+  }
+
+  function showSearch() {
+    searchOpen = true;
+    searchOverlay.classList.add('visible');
+    setTimeout(function () { searchInput.focus(); }, 320);
+  }
+
+  function hideSearch() {
+    searchOpen = false;
+    searchOverlay.classList.remove('visible');
+    searchInput.value = '';
+  }
+
+  function showAsk() {
+    askOpen = true;
+
+    var contextHtml, chipsHtml;
+    var chipIcon = '<svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>';
+
+    if (selectedText) {
+      contextHtml = ''
+        + '<div class="ctx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#4a7fd4" stroke-width="1.5" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h12"/><rect x="2" y="9" width="8" height="6" rx="1" fill="#4a7fd4" opacity="0.18" stroke="none"/></svg></div>'
+        + '<div class="ctx-text"><strong>Selected:</strong> \u201c' + truncate(selectedText, 60) + '\u201d</div>';
+
+      var chips = getChipsForSelection(selectedText);
+      chipsHtml = '';
+      for (var i = 0; i < chips.length; i++) {
+        chipsHtml += '<button class="try-chip" data-query="' + chips[i].replace(/"/g, '&quot;') + '">' + chipIcon + chips[i] + '</button>';
+      }
+    } else {
+      contextHtml = ''
+        + '<div class="ctx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#4a7fd4" stroke-width="1.5" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>'
+        + '<div class="ctx-text"><strong>Reading:</strong> Punching, Slamming, Screaming: A Chef\u2019s Past Abuse Haunts Noma</div>';
+
+      chipsHtml = ''
+        + '<button class="try-chip" data-query="Summarize this article for me">' + chipIcon + 'Summarize this for me</button>'
+        + '<button class="try-chip" data-query="What happened at Noma before this?">' + chipIcon + 'What happened at Noma before this?</button>'
+        + '<button class="try-chip" data-query="Is this common in fine dining?">' + chipIcon + 'Is this common in fine dining?</button>';
+    }
+
+    var body = askSheet.querySelector('.chat-overlay-body');
+    body.innerHTML = ''
+      + '<div class="chat-context-card">' + contextHtml + '</div>'
+      + '<div style="margin-top:16px;">'
+      + '  <div class="try-asking-chips">' + chipsHtml + '</div>'
+      + '</div>';
+
+    body.querySelectorAll('.try-chip').forEach(function (c) {
+      c.addEventListener('click', function () { populateAsk(c.getAttribute('data-query')); });
+    });
+
+    askSheet.classList.add('visible');
+    askScrim.classList.add('visible');
+    setTimeout(function () { askInput.focus(); }, 320);
+  }
+
+  function hideAsk() {
+    askOpen = false;
+    askSheet.classList.remove('visible');
+    askScrim.classList.remove('visible');
+    askInput.value = '';
+    selectedText = '';
+    if (strip) {
+      strip.classList.remove('selection-active');
+      updateStripText(DEFAULT_STRIP_TEXT);
+    }
+  }
+
+  function populateSearch(text) { searchInput.value = text; searchInput.focus(); }
+  function populateAsk(text) { askInput.value = text; askInput.focus(); }
+
+  window.__registerPrototype({
+    id: 'article',
+    label: 'Article',
+    status: 'ready',
+    mount: function (contentEl, scrollEl) {
+      searchOpen = false;
+      askOpen = false;
+      scrollEl.style.paddingTop = '0';
+      scrollEl.style.paddingBottom = '94px';
+
+      contentEl.innerHTML = ''
+        + '<nav class="nyt-nav" style="justify-content:center; padding-top:54px;">'
+        + '  <img class="nyt-logo-img" src="' + ASSET_ROOT + 'NYT-logo.svg" alt="The New York Times" />'
+        + '</nav>'
+        + '<div class="article-wrap">'
+        + '  <h1 class="article-headline">Punching, Slamming, Screaming: A Chef\u2019s Past Abuse Haunts Noma, the World\u2019s Top-Rated Restaurant</h1>'
+        + '  <p class="article-dek">Dozens of former employees say Ren\u00e9 Redzepi inflicted physical and psychological violence on the staff for years.</p>'
+        + '  <hr class="article-divider" />'
+        + '  <p class="article-date">Published March 7, 2026</p>'
+        + '  <div class="article-body">'
+        + '    <p>On a February night in 2014, in the middle of a busy dinner at the acclaimed Copenhagen restaurant Noma, the founding chef, Ren\u00e9 Redzepi, ordered the entire kitchen staff to follow him outside into the cold.</p>'
+        + '    <p>He was shoving a sous-chef in front of him, a young man who had put on techno music, a genre that Mr. Redzepi disliked, in the production kitchen. Far from the dining room, it was where unpaid interns worked 16-hour days.</p>'
+        + '    <p>Mr. Redzepi taunted the chef over and over as about 40 cooks, in short sleeves and aprons, formed the usual circle around the two men. It was not the first time they had been forced to participate in a public shaming.</p>'
+        + '    <p>Mr. Redzepi escalated the attack, punching his employee in the ribs and screaming. His co-workers stood in silence until he breathlessly complied. Then they filed back into the kitchen and returned to work.</p>'
+        + '    <p>The episode was never mentioned again. Dozens of former employees described other violent punishments, and said silence among the staff was customary afterward.</p>'
+        + '    <p>While Mr. Redzepi and those who now work with him say the abuse is in the past, the former employees contend that he has never been held truly accountable.</p>'
+        + '  </div>'
+        + '</div>';
+
+      var deviceFrame = document.getElementById('device-frame');
+
+      // ── Contextual strip ──
+      strip = document.createElement('div');
+      strip.className = 'ctx-strip';
+      strip.innerHTML = ''
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>'
+        + '<span class="ctx-strip-text">Noma restaurant abuse</span>'
+        + '<span class="ctx-strip-caret">\u203a</span>';
+      deviceFrame.appendChild(strip);
+      strip.addEventListener('click', showAsk);
+
+      // ── Article bottom bar ──
+      var bar = document.createElement('div');
+      bar.className = 'article-bar';
+      bar.innerHTML = ''
+        + '<div class="article-bar-left">'
+        + '  <button class="article-bar-btn" aria-label="Go back"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>'
+        + '</div>'
+        + '<div class="article-bar-right">'
+        + '  <button class="article-bar-btn" data-action="search" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg></button>'
+        + '  <button class="article-bar-btn" aria-label="Bookmark"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linejoin="round"><path d="M5 2.5h14a1 1 0 011 1v18l-8-4.5L4 21.5v-18a1 1 0 011-1z"/></svg></button>'
+        + '  <button class="article-bar-btn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-4-4-4 4M10 3v12M4 12v6.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V12"/></svg></button>'
+        + '  <button class="article-bar-btn" aria-label="Gift"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M3 12h18M12 8c-1.5-3-4.5-4-4.5-4s1.5-2.5 4.5 0c3-2.5 4.5 0 4.5 0s-3 1-4.5 4z"/></svg></button>'
+        + '</div>';
+      deviceFrame.appendChild(bar);
+
+      bar.querySelector('[data-action="search"]').addEventListener('click', showSearch);
+
+      // ── Full-screen search overlay ──
+      searchOverlay = document.createElement('div');
+      searchOverlay.className = 'search-overlay';
+      searchOverlay.innerHTML = ''
+        + '<div class="search-overlay-header">'
+        + '  <button class="search-back-btn" aria-label="Close search">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>'
+        + '  </button>'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div class="search-overlay-body">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>What\u2019s the biggest news today?</button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>Explain the tariff court ruling</button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Trump tariffs</div>'
+        + '      <div class="recent-item" data-query="Harvard foreign students"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Harvard foreign students</div>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      deviceFrame.appendChild(searchOverlay);
+      searchInput = searchOverlay.querySelector('.search-input');
+
+      searchOverlay.querySelector('.search-back-btn').addEventListener('click', hideSearch);
+      searchOverlay.querySelectorAll('.try-chip').forEach(function (c) {
+        c.addEventListener('click', function () { populateSearch(c.getAttribute('data-query')); });
+      });
+      searchOverlay.querySelectorAll('.recent-item').forEach(function (r) {
+        r.addEventListener('click', function () { populateSearch(r.getAttribute('data-query')); });
+      });
+
+      // ── Ask half-sheet ──
+      askScrim = document.createElement('div');
+      askScrim.className = 'ask-sheet-scrim';
+      deviceFrame.appendChild(askScrim);
+      askScrim.addEventListener('click', hideAsk);
+
+      askSheet = document.createElement('div');
+      askSheet.className = 'ask-sheet';
+      askSheet.innerHTML = ''
+        + '<div class="ask-sheet-handle"></div>'
+        + '<div class="chat-overlay-header">'
+        + '  <span class="chat-overlay-title">Ask about this article</span>'
+        + '</div>'
+        + '<div class="chat-overlay-body" style="flex:1; overflow-y:auto; padding:16px 16px 8px;"></div>'
+        + '<div class="chat-input-area">'
+        + '  <input class="chat-input" type="text" placeholder="Ask anything about this article..." />'
+        + '</div>';
+      deviceFrame.appendChild(askSheet);
+      askInput = askSheet.querySelector('.chat-input');
+
+      askSheet.querySelector('.ask-sheet-handle').addEventListener('click', hideAsk);
+
+      // ── Text selection listener ──
+      selectionHandler = function () {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.rangeCount) {
+          strip.classList.remove('selection-active');
+          return;
+        }
+        var range = sel.getRangeAt(0);
+        var body = contentEl.querySelector('.article-body');
+        if (!body || !body.contains(range.startContainer)) {
+          strip.classList.remove('selection-active');
+          return;
+        }
+        var text = sel.toString().trim();
+        if (text.length < 2) return;
+        selectedText = text;
+        strip.classList.remove('selection-active');
+        void strip.offsetWidth;
+        strip.classList.add('selection-active');
+        updateStripText(truncate(text, 36));
+      };
+      document.addEventListener('selectionchange', selectionHandler);
+
+      // ── Scroll-based contextual prompts ──
+      scrollHandler = function () {
+        if (selectedText) return;
+        var st = scrollEl.scrollTop;
+        var prompt = SCROLL_PROMPTS[0].text;
+        for (var i = SCROLL_PROMPTS.length - 1; i >= 0; i--) {
+          if (st >= SCROLL_PROMPTS[i].threshold) {
+            prompt = SCROLL_PROMPTS[i].text;
+            break;
+          }
+        }
+        updateStripText(prompt);
+      };
+      scrollEl.addEventListener('scroll', scrollHandler);
+    },
+    unmount: function () {
+      searchOpen = false;
+      askOpen = false;
+      selectedText = '';
+      if (selectionHandler) {
+        document.removeEventListener('selectionchange', selectionHandler);
+        selectionHandler = null;
+      }
+      if (scrollHandler) {
+        var scrollEl = document.getElementById('content-scroll');
+        if (scrollEl) scrollEl.removeEventListener('scroll', scrollHandler);
+        scrollHandler = null;
+      }
+      var els = document.querySelectorAll('.article-bar, .ctx-strip, .search-overlay, .ask-sheet-scrim, .ask-sheet');
+      els.forEach(function (el) { el.remove(); });
+      searchOverlay = null; askSheet = null; askScrim = null;
+      searchInput = null; askInput = null; strip = null;
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 3: For You Tab
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+  var overlay = null;
+  var searchInput = null;
+  var searchOpen = false;
+  var searchTabBtn = null;
+  var youTabBtn = null;
+
+  function showSearch() {
+    if (searchOpen) return;
+    searchOpen = true;
+    overlay.classList.add('visible');
+    if (searchTabBtn) searchTabBtn.classList.add('active');
+    if (youTabBtn) youTabBtn.classList.remove('active');
+    setTimeout(function () { searchInput.focus(); }, 320);
+  }
+
+  function hideSearch() {
+    if (!searchOpen) return;
+    searchOpen = false;
+    overlay.classList.remove('visible');
+    searchInput.value = '';
+    if (searchTabBtn) searchTabBtn.classList.remove('active');
+    if (youTabBtn) youTabBtn.classList.add('active');
+  }
+
+  function populateInput(text) {
+    searchInput.value = text;
+    searchInput.focus();
+  }
+
+  window.__registerPrototype({
+    id: 'for-you',
+    label: 'For You',
+    status: 'ready',
+    mount: function (contentEl, scrollEl) {
+      searchOpen = false;
+      scrollEl.style.paddingTop = '0';
+
+      contentEl.innerHTML = ''
+        + '<header class="you-header" style="padding-top:54px;">'
+        + '  <div style="display:flex;align-items:center;gap:3px;">'
+        + '    <h1 class="you-title">Good morning, John</h1>'
+        + '    <span class="caret-icon"><svg viewBox="0 0 7 12"><polyline points="1,1 6,6 1,11"/></svg></span>'
+        + '  </div>'
+        + '  <p class="you-subtitle">Jump back in.</p>'
+        + '</header>'
+        + '<div class="you-modules">'
+        + '  <section><div class="module-header">'
+        + '    <div class="module-title-row"><h2 class="module-title">Recently viewed</h2><span class="caret-icon"><svg viewBox="0 0 7 12"><polyline points="1,1 6,6 1,11"/></svg></span></div>'
+        + '    <div class="module-items">'
+        + '      <div class="story-row"><div class="story-text"><p class="story-title">When Bruce Springsteen Met Michael Stipe</p><p class="story-meta">Viewed today</p></div><img class="story-thumb" src="' + ASSET_ROOT + 'You-tab/Images/1.png" alt="" /></div>'
+        + '      <div class="story-row"><div class="story-text"><p class="story-title">Want a Real Vacation? Leave Your Phone at Home.</p><p class="story-meta">Viewed today</p></div><img class="story-thumb" src="' + ASSET_ROOT + 'You-tab/Images/2.png" alt="" /></div>'
+        + '      <div class="story-row"><div class="story-text"><p class="story-title">Democrats Embrace a Shutdown Fight They Wanted to Avoid</p><p class="story-meta">Viewed yesterday</p></div><img class="story-thumb" src="' + ASSET_ROOT + 'You-tab/Images/3.png" alt="" /></div>'
+        + '    </div>'
+        + '  </div><a class="see-all" href="#">See all</a></section>'
+        + '  <section><div class="module-header">'
+        + '    <div class="module-title-row"><h2 class="module-title">Saved articles and audio</h2><span class="caret-icon"><svg viewBox="0 0 7 12"><polyline points="1,1 6,6 1,11"/></svg></span></div>'
+        + '    <div class="module-items">'
+        + '      <div class="story-row"><div class="story-text"><p class="story-title">Want a Real Vacation? Leave Your Phone at Home.</p><p class="story-meta">Saved yesterday</p></div><img class="story-thumb" src="' + ASSET_ROOT + 'You-tab/Images/10.png" alt="" /></div>'
+        + '      <div class="story-row"><div class="story-text"><p class="story-title">Democrats Embrace a Shutdown Fight They Wanted to Avoid</p><p class="story-meta">Saved feb. 8 2026</p></div><img class="story-thumb" src="' + ASSET_ROOT + 'You-tab/Images/11.png" alt="" /></div>'
+        + '    </div>'
+        + '  </div><a class="see-all" href="#">See all (23)</a></section>'
+        + '</div>';
+
+      var deviceFrame = document.getElementById('device-frame');
+
+      // ── Search overlay (same as Home Tab) ──
+      overlay = document.createElement('div');
+      overlay.className = 'search-overlay';
+      overlay.innerHTML = ''
+        + '<div class="search-overlay-header">'
+        + '  <button class="search-back-btn" aria-label="Close search">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>'
+        + '  </button>'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div class="search-overlay-body">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        What\u2019s the biggest news today?'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>'
+        + '        Explain the tariff court ruling'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="I want something uplifting to read">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        I want something uplifting to read'
+        + '      </button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Trump tariffs</div>'
+        + '      <div class="recent-item" data-query="Harvard foreign students"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Harvard foreign students</div>'
+        + '      <div class="recent-item" data-query="Gaza hostage negotiations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Gaza hostage negotiations</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Trending</div>'
+        + '    <div class="trending-pills">'
+        + '      <button class="trending-pill" data-query="Noma restaurant">Noma restaurant</button>'
+        + '      <button class="trending-pill" data-query="DOGE layoffs">DOGE layoffs</button>'
+        + '      <button class="trending-pill" data-query="Climate FEMA">Climate FEMA</button>'
+        + '      <button class="trending-pill" data-query="Musk exits Washington">Musk exits Washington</button>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      deviceFrame.appendChild(overlay);
+      searchInput = overlay.querySelector('.search-input');
+
+      overlay.querySelector('.search-back-btn').addEventListener('click', hideSearch);
+      overlay.querySelectorAll('.try-chip').forEach(function (c) {
+        c.addEventListener('click', function () { populateInput(c.getAttribute('data-query')); });
+      });
+      overlay.querySelectorAll('.recent-item').forEach(function (r) {
+        r.addEventListener('click', function () { populateInput(r.getAttribute('data-query')); });
+      });
+      overlay.querySelectorAll('.trending-pill').forEach(function (p) {
+        p.addEventListener('click', function () { populateInput(p.getAttribute('data-query')); });
+      });
+
+      // ── Bottom nav ──
+      var nav = document.createElement('nav');
+      nav.className = 'bottom-nav';
+      nav.setAttribute('aria-label', 'Primary');
+      nav.innerHTML = ''
+        + '<button class="tab-item" data-tab="home"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/home.svg" alt="" /><span>Home</span></button>'
+        + '<button class="tab-item" data-tab="watch"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/watch.svg" alt="" /><span>Watch</span></button>'
+        + '<button class="tab-item" data-tab="listen"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/Listen.svg" alt="" /><span>Listen</span></button>'
+        + '<button class="tab-item active" data-tab="you"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/you.svg" alt="" /><span>You</span></button>'
+        + '<button class="tab-item" data-tab="search"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg><span>Search</span></button>';
+      deviceFrame.appendChild(nav);
+
+      searchTabBtn = nav.querySelector('[data-tab="search"]');
+      youTabBtn = nav.querySelector('[data-tab="you"]');
+      searchTabBtn.addEventListener('click', function () {
+        if (searchOpen) { hideSearch(); } else { showSearch(); }
+      });
+      youTabBtn.addEventListener('click', function () {
+        if (searchOpen) hideSearch();
+      });
+    },
+    unmount: function () {
+      searchOpen = false;
+      overlay = null;
+      searchInput = null;
+      searchTabBtn = null;
+      youTabBtn = null;
+      var nav = document.querySelector('.bottom-nav');
+      if (nav) nav.remove();
+      var ov = document.querySelector('.search-overlay');
+      if (ov) ov.remove();
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 4: Search Page
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+
+  function populateInput(text) {
+    var input = document.querySelector('.search-page-input');
+    if (input) { input.value = text; input.focus(); }
+  }
+
+  window.__registerPrototype({
+    id: 'search-page',
+    label: 'Search Page',
+    status: 'ready',
+    mount: function (contentEl, scrollEl) {
+      scrollEl.style.paddingTop = '0';
+      scrollEl.style.paddingBottom = '82px';
+
+      contentEl.innerHTML = ''
+        + '<div style="padding:58px 16px 12px; border-bottom:1px solid #f2f2f2;">'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input search-page-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div style="padding:20px 16px 34px; display:flex; flex-direction:column; gap:28px;">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        What\u2019s the biggest news today?'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>'
+        + '        Explain the tariff court ruling'
+        + '      </button>'
+        + '      <button class="try-chip" data-query="I want something uplifting to read">'
+        + '        <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        + '        I want something uplifting to read'
+        + '      </button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Trump tariffs</div>'
+        + '      <div class="recent-item" data-query="Harvard foreign students"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Harvard foreign students</div>'
+        + '      <div class="recent-item" data-query="Gaza hostage negotiations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Gaza hostage negotiations</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Trending</div>'
+        + '    <div class="trending-pills">'
+        + '      <button class="trending-pill" data-query="Noma restaurant">Noma restaurant</button>'
+        + '      <button class="trending-pill" data-query="DOGE layoffs">DOGE layoffs</button>'
+        + '      <button class="trending-pill" data-query="Climate FEMA">Climate FEMA</button>'
+        + '      <button class="trending-pill" data-query="Musk exits Washington">Musk exits Washington</button>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+
+      // Wire interactions
+      contentEl.querySelectorAll('.try-chip').forEach(function (c) {
+        c.addEventListener('click', function () { populateInput(c.getAttribute('data-query')); });
+      });
+      contentEl.querySelectorAll('.recent-item').forEach(function (r) {
+        r.addEventListener('click', function () { populateInput(r.getAttribute('data-query')); });
+      });
+      contentEl.querySelectorAll('.trending-pill').forEach(function (p) {
+        p.addEventListener('click', function () { populateInput(p.getAttribute('data-query')); });
+      });
+
+      // Bottom nav with Search active
+      var nav = document.createElement('nav');
+      nav.className = 'bottom-nav';
+      nav.setAttribute('aria-label', 'Primary');
+      nav.innerHTML = ''
+        + '<button class="tab-item" data-tab="home"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/home.svg" alt="" /><span>Home</span></button>'
+        + '<button class="tab-item" data-tab="watch"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/watch.svg" alt="" /><span>Watch</span></button>'
+        + '<button class="tab-item" data-tab="listen"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/Listen.svg" alt="" /><span>Listen</span></button>'
+        + '<button class="tab-item" data-tab="you"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/you.svg" alt="" /><span>You</span></button>'
+        + '<button class="tab-item active" data-tab="search"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg><span>Search</span></button>';
+      document.getElementById('device-frame').appendChild(nav);
+    },
+    unmount: function () {
+      var nav = document.querySelector('.bottom-nav');
+      if (nav) nav.remove();
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 5: Video / Watch
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+  var searchOverlay = null;
+  var askSheet = null;
+  var askScrim = null;
+  var searchInput = null;
+  var askInput = null;
+  var searchOpen = false;
+  var askOpen = false;
+  var searchTabBtn = null;
+  var watchTabBtn = null;
+
+  var strip = null;
+  var promptInterval = null;
+  var currentMoment = 0;
+
+  var VIDEO_MOMENTS = [
+    { strip: 'US attack on Iran',
+      context: '<strong>Watching:</strong> US attack on Iran \u2014 President Trump announced large-scale strikes',
+      chips: ['What led to the US attacking Iran?', 'Timeline of US-Iran tensions', 'Show me more coverage'] },
+    { strip: 'What is Iran\u2019s response?',
+      context: '<strong>Watching:</strong> US attack on Iran \u2014 Iran\u2019s response and global reaction',
+      chips: ['How has Iran responded?', 'What are the global implications?', 'Related NYT coverage'] },
+    { strip: 'How is Israel involved?',
+      context: '<strong>Watching:</strong> US attack on Iran \u2014 Israel\u2019s role in the conflict',
+      chips: ['How is Israel involved?', 'What\u2019s the Israel-Iran history?', 'Latest on the conflict'] }
+  ];
+
+  function updateStripText(html) {
+    if (!strip) return;
+    var textEl = strip.querySelector('.ctx-strip-text');
+    if (textEl) textEl.innerHTML = html;
+  }
+
+  function pulseStrip() {
+    if (!strip) return;
+    strip.classList.remove('strip-updated');
+    void strip.offsetWidth;
+    strip.classList.add('strip-updated');
+  }
+
+  function showSearch() {
+    searchOpen = true;
+    searchOverlay.classList.add('visible');
+    if (searchTabBtn) searchTabBtn.classList.add('active');
+    if (watchTabBtn) watchTabBtn.classList.remove('active');
+    setTimeout(function () { searchInput.focus(); }, 320);
+  }
+
+  function hideSearch() {
+    searchOpen = false;
+    searchOverlay.classList.remove('visible');
+    searchInput.value = '';
+    if (searchTabBtn) searchTabBtn.classList.remove('active');
+    if (watchTabBtn) watchTabBtn.classList.add('active');
+  }
+
+  function showAsk() {
+    askOpen = true;
+
+    var moment = VIDEO_MOMENTS[currentMoment] || VIDEO_MOMENTS[0];
+    var chipIcon = '<svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>';
+
+    var contextHtml = ''
+      + '<div class="ctx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#4a7fd4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21"/></svg></div>'
+      + '<div class="ctx-text">' + moment.context + '</div>';
+
+    var chipsHtml = '';
+    for (var i = 0; i < moment.chips.length; i++) {
+      chipsHtml += '<button class="try-chip" data-query="' + moment.chips[i].replace(/"/g, '&quot;') + '">' + chipIcon + moment.chips[i] + '</button>';
+    }
+
+    var body = askSheet.querySelector('.chat-overlay-body');
+    body.innerHTML = ''
+      + '<div class="chat-context-card">' + contextHtml + '</div>'
+      + '<div style="margin-top:16px;">'
+      + '  <div class="try-asking-chips">' + chipsHtml + '</div>'
+      + '</div>';
+
+    body.querySelectorAll('.try-chip').forEach(function (c) {
+      c.addEventListener('click', function () { populateAsk(c.getAttribute('data-query')); });
+    });
+
+    askSheet.classList.add('visible');
+    askScrim.classList.add('visible');
+    setTimeout(function () { askInput.focus(); }, 320);
+  }
+
+  function hideAsk() {
+    askOpen = false;
+    askSheet.classList.remove('visible');
+    askScrim.classList.remove('visible');
+    askInput.value = '';
+  }
+
+  function populateSearch(text) { searchInput.value = text; searchInput.focus(); }
+  function populateAsk(text) { askInput.value = text; askInput.focus(); }
+
+  window.__registerPrototype({
+    id: 'video',
+    label: 'Video / Watch',
+    status: 'ready',
+    mount: function (contentEl, scrollEl) {
+      searchOpen = false;
+      askOpen = false;
+      scrollEl.style.paddingTop = '0';
+      scrollEl.style.paddingBottom = '0';
+      scrollEl.style.overflow = 'hidden';
+
+      var deviceFrame = document.getElementById('device-frame');
+
+      // Add dark-status class for white status bar text
+      deviceFrame.classList.add('dark-status');
+
+      // Hide the default content scroll — we build directly in device-frame
+      contentEl.style.display = 'none';
+
+      // ── Full-screen video ──
+      var video = document.createElement('div');
+      video.className = 'watch-video';
+      video.innerHTML = ''
+        + '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#0f3460 60%,#1a1a2e 100%);display:flex;align-items:center;justify-content:center;">'
+        + '  <div style="text-align:center;color:rgba(255,255,255,0.15);font-family:var(--font-franklin);font-size:48px;font-weight:700;">NYT<br/>VIDEO</div>'
+        + '</div>'
+        + '<div class="watch-gradient"></div>'
+        + '<div class="watch-headline">President Trump on Saturday announced that the United States was conducing a large attack on Iran...</div>'
+        + '<div class="watch-controls">'
+        + '  <button class="watch-ctrl-btn" aria-label="Volume"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg></button>'
+        + '  <button class="watch-ctrl-btn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-4-4-4 4M10 3v12M4 12v6.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V12"/></svg></button>'
+        + '</div>'
+        + '<div class="watch-scrubber"><div class="watch-scrubber-progress"></div></div>';
+      deviceFrame.insertBefore(video, deviceFrame.querySelector('.phone-home-indicator'));
+
+      // ── Contextual strip (dark, above nav) ──
+      strip = document.createElement('div');
+      strip.className = 'ctx-strip dark';
+      strip.innerHTML = ''
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>'
+        + '<span class="ctx-strip-text">US attack on Iran</span>'
+        + '<span class="ctx-strip-caret">\u203a</span>';
+      deviceFrame.appendChild(strip);
+      strip.addEventListener('click', showAsk);
+
+      // ── Timeline-aware prompt rotation ──
+      currentMoment = 0;
+      promptInterval = setInterval(function () {
+        currentMoment = (currentMoment + 1) % VIDEO_MOMENTS.length;
+        updateStripText(VIDEO_MOMENTS[currentMoment].strip);
+        pulseStrip();
+      }, 8000);
+
+      // ── Dark bottom nav ──
+      var nav = document.createElement('nav');
+      nav.className = 'bottom-nav dark';
+      nav.setAttribute('aria-label', 'Primary');
+      nav.innerHTML = ''
+        + '<button class="tab-item" data-tab="home"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/home.svg" alt="" /><span>Home</span></button>'
+        + '<button class="tab-item active" data-tab="watch"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/watch.svg" alt="" /><span>Watch</span></button>'
+        + '<button class="tab-item" data-tab="listen"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/Listen.svg" alt="" /><span>Listen</span></button>'
+        + '<button class="tab-item" data-tab="you"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/you.svg" alt="" /><span>You</span></button>'
+        + '<button class="tab-item" data-tab="search"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg><span>Search</span></button>';
+      deviceFrame.appendChild(nav);
+
+      searchTabBtn = nav.querySelector('[data-tab="search"]');
+      watchTabBtn = nav.querySelector('[data-tab="watch"]');
+      searchTabBtn.addEventListener('click', function () {
+        if (searchOpen) { hideSearch(); } else { showSearch(); }
+      });
+      watchTabBtn.addEventListener('click', function () {
+        if (searchOpen) hideSearch();
+      });
+
+      // ── Full-screen search overlay ──
+      searchOverlay = document.createElement('div');
+      searchOverlay.className = 'search-overlay';
+      searchOverlay.innerHTML = ''
+        + '<div class="search-overlay-header">'
+        + '  <button class="search-back-btn" aria-label="Close search">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>'
+        + '  </button>'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div class="search-overlay-body">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>What\u2019s the biggest news today?</button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>Explain the tariff court ruling</button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Trump tariffs</div>'
+        + '      <div class="recent-item" data-query="Iran attack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Iran attack</div>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      deviceFrame.appendChild(searchOverlay);
+      searchInput = searchOverlay.querySelector('.search-input');
+
+      searchOverlay.querySelector('.search-back-btn').addEventListener('click', hideSearch);
+      searchOverlay.querySelectorAll('.try-chip').forEach(function (c) {
+        c.addEventListener('click', function () { populateSearch(c.getAttribute('data-query')); });
+      });
+      searchOverlay.querySelectorAll('.recent-item').forEach(function (r) {
+        r.addEventListener('click', function () { populateSearch(r.getAttribute('data-query')); });
+      });
+
+      // ── Ask half-sheet (dark) ──
+      askScrim = document.createElement('div');
+      askScrim.className = 'ask-sheet-scrim';
+      deviceFrame.appendChild(askScrim);
+      askScrim.addEventListener('click', hideAsk);
+
+      askSheet = document.createElement('div');
+      askSheet.className = 'ask-sheet dark';
+      askSheet.innerHTML = ''
+        + '<div class="ask-sheet-handle"></div>'
+        + '<div class="chat-overlay-header">'
+        + '  <span class="chat-overlay-title">Ask about this video</span>'
+        + '</div>'
+        + '<div class="chat-overlay-body" style="flex:1; overflow-y:auto; padding:16px 16px 8px;"></div>'
+        + '<div class="chat-input-area">'
+        + '  <input class="chat-input" type="text" placeholder="Ask anything about this video..." />'
+        + '</div>';
+      deviceFrame.appendChild(askSheet);
+      askInput = askSheet.querySelector('.chat-input');
+
+      askSheet.querySelector('.ask-sheet-handle').addEventListener('click', hideAsk);
+    },
+    unmount: function () {
+      searchOpen = false;
+      askOpen = false;
+      if (promptInterval) {
+        clearInterval(promptInterval);
+        promptInterval = null;
+      }
+      currentMoment = 0;
+      var deviceFrame = document.getElementById('device-frame');
+      deviceFrame.classList.remove('dark-status');
+      var contentEl = document.getElementById('prototype-content');
+      if (contentEl) contentEl.style.display = '';
+      var scrollEl = document.getElementById('content-scroll');
+      if (scrollEl) { scrollEl.style.overflow = ''; }
+      var els = document.querySelectorAll('.watch-video, .ctx-strip, .bottom-nav, .search-overlay, .ask-sheet-scrim, .ask-sheet');
+      els.forEach(function (el) { el.remove(); });
+      searchOverlay = null; askSheet = null; askScrim = null;
+      searchInput = null; askInput = null;
+      searchTabBtn = null; watchTabBtn = null; strip = null;
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Entry Point 6: Podcast / Listen
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+
+  var ASSET_ROOT = './Assets/';
+  var searchOverlay = null;
+  var askSheet = null;
+  var askScrim = null;
+  var searchInput = null;
+  var askInput = null;
+  var searchOpen = false;
+  var askOpen = false;
+  var searchTabBtn = null;
+  var listenTabBtn = null;
+
+  var artworkStrip = null;
+  var promptInterval = null;
+  var currentMoment = 0;
+
+  var PODCAST_MOMENTS = [
+    { strip: 'A Good Night for Democrats',
+      context: '<strong>Listening:</strong> The Daily \u2014 A Good Night for Democrats',
+      chips: ['What were the key races?', 'Why is this significant for 2026?', 'Show me related articles'] },
+    { strip: 'Who were the key winners?',
+      context: '<strong>Listening:</strong> The Daily \u2014 Key winners and what they mean',
+      chips: ['Who won the biggest races?', 'What does this mean for the party?', 'NYT election coverage'] },
+    { strip: 'What happens next for Democrats?',
+      context: '<strong>Listening:</strong> The Daily \u2014 What\u2019s next for Democrats',
+      chips: ['What\u2019s the path forward?', 'How does this affect 2028?', 'Democratic strategy analysis'] }
+  ];
+
+  function updateArtworkStripText(text) {
+    if (!artworkStrip) return;
+    var textEl = artworkStrip.querySelector('.podcast-artwork-strip-text');
+    if (textEl) textEl.textContent = text;
+  }
+
+  function pulseArtworkStrip() {
+    if (!artworkStrip) return;
+    artworkStrip.classList.remove('strip-updated');
+    void artworkStrip.offsetWidth;
+    artworkStrip.classList.add('strip-updated');
+  }
+
+  function showSearch() {
+    searchOpen = true;
+    searchOverlay.classList.add('visible');
+    if (searchTabBtn) searchTabBtn.classList.add('active');
+    if (listenTabBtn) listenTabBtn.classList.remove('active');
+    setTimeout(function () { searchInput.focus(); }, 320);
+  }
+
+  function hideSearch() {
+    searchOpen = false;
+    searchOverlay.classList.remove('visible');
+    searchInput.value = '';
+    if (searchTabBtn) searchTabBtn.classList.remove('active');
+    if (listenTabBtn) listenTabBtn.classList.add('active');
+  }
+
+  function showAsk() {
+    askOpen = true;
+
+    var moment = PODCAST_MOMENTS[currentMoment] || PODCAST_MOMENTS[0];
+    var chipIcon = '<svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>';
+
+    var contextHtml = ''
+      + '<div class="ctx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#4a7fd4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg></div>'
+      + '<div class="ctx-text">' + moment.context + '</div>';
+
+    var chipsHtml = '';
+    for (var i = 0; i < moment.chips.length; i++) {
+      chipsHtml += '<button class="try-chip" data-query="' + moment.chips[i].replace(/"/g, '&quot;') + '">' + chipIcon + moment.chips[i] + '</button>';
+    }
+
+    var body = askSheet.querySelector('.chat-overlay-body');
+    body.innerHTML = ''
+      + '<div class="chat-context-card">' + contextHtml + '</div>'
+      + '<div style="margin-top:16px;">'
+      + '  <div class="try-asking-chips">' + chipsHtml + '</div>'
+      + '</div>';
+
+    body.querySelectorAll('.try-chip').forEach(function (c) {
+      c.addEventListener('click', function () { populateAsk(c.getAttribute('data-query')); });
+    });
+
+    askSheet.classList.add('visible');
+    askScrim.classList.add('visible');
+    setTimeout(function () { askInput.focus(); }, 320);
+  }
+
+  function hideAsk() {
+    askOpen = false;
+    askSheet.classList.remove('visible');
+    askScrim.classList.remove('visible');
+    askInput.value = '';
+  }
+
+  function populateSearch(text) { searchInput.value = text; searchInput.focus(); }
+  function populateAsk(text) { askInput.value = text; askInput.focus(); }
+
+  window.__registerPrototype({
+    id: 'podcast',
+    label: 'Podcast / Listen',
+    status: 'ready',
+    mount: function (contentEl, scrollEl) {
+      searchOpen = false;
+      askOpen = false;
+      scrollEl.style.paddingTop = '54px';
+      scrollEl.style.paddingBottom = '82px';
+
+      contentEl.innerHTML = ''
+        // Artwork area with contextual strip
+        + '<div class="podcast-artwork">'
+        + '  <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a3a5c 0%,#2980b9 40%,#6dd5fa 70%,#2c3e50 100%);display:flex;align-items:center;justify-content:center;">'
+        + '    <div style="text-align:center;color:rgba(255,255,255,0.12);font-family:var(--font-cheltenham);font-size:64px;font-weight:700;line-height:1;">THE<br/>DAILY</div>'
+        + '  </div>'
+        + '  <div class="podcast-artwork-overlay">'
+        + '    <div style="width:44px;height:44px;border-radius:4px;background:#c0392b;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);">'
+        + '      <span style="font-family:var(--font-franklin);font-weight:700;font-size:9px;color:#fff;text-transform:uppercase;letter-spacing:0.5px;text-align:center;line-height:1.2;">The<br/>Daily</span>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="podcast-artwork-strip" id="podcast-ctx-strip">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>'
+        + '    <span class="podcast-artwork-strip-text">A Good Night for Democrats</span>'
+        + '  </div>'
+        + '</div>'
+        // Player controls
+        + '<div class="podcast-player">'
+        + '  <div class="podcast-show-info">'
+        + '    <div style="width:36px;height:36px;border-radius:3px;background:#c0392b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        + '      <span style="font-family:var(--font-franklin);font-weight:700;font-size:7px;color:#fff;text-transform:uppercase;letter-spacing:0.3px;text-align:center;line-height:1.2;">The<br/>Daily</span>'
+        + '    </div>'
+        + '    <div class="podcast-show-labels">'
+        + '      <span class="podcast-show-date">Today</span>'
+        + '      <span class="podcast-show-name">The Daily</span>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="podcast-episode-title">A Good Night for Democrats</div>'
+        + '  <div class="podcast-scrubber">'
+        + '    <div class="podcast-scrubber-bar"><div class="podcast-scrubber-elapsed"></div></div>'
+        + '    <div class="podcast-scrubber-times"><span>0:01</span><span>-37:43</span></div>'
+        + '  </div>'
+        + '  <div class="podcast-controls">'
+        + '    <button class="podcast-ctrl-btn" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="19,20 9,12 19,4"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>'
+        + '    <button class="podcast-ctrl-btn" aria-label="Rewind 15s"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-8.36L1 10"/><text x="12" y="14" text-anchor="middle" fill="#121212" stroke="none" font-family="var(--font-franklin)" font-weight="700" font-size="8">15</text></svg></button>'
+        + '    <button class="podcast-ctrl-btn play-btn" aria-label="Play"><svg viewBox="0 0 48 48" fill="#121212" stroke="none"><circle cx="24" cy="24" r="23" fill="none" stroke="#121212" stroke-width="2"/><polygon points="19,14 19,34 36,24"/></svg></button>'
+        + '    <button class="podcast-ctrl-btn" aria-label="Forward 30s"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-5.64-8.36L23 10"/><text x="12" y="14" text-anchor="middle" fill="#121212" stroke="none" font-family="var(--font-franklin)" font-weight="700" font-size="8">30</text></svg></button>'
+        + '    <button class="podcast-ctrl-btn" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>'
+        + '  </div>'
+        + '  <div class="podcast-secondary">'
+        + '    <button class="podcast-secondary-btn">1x</button>'
+        + '    <button class="podcast-secondary-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></button>'
+        + '    <button class="podcast-secondary-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg></button>'
+        + '    <button class="podcast-secondary-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-4-4-4 4M10 3v12M4 12v6.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V12"/></svg></button>'
+        + '  </div>'
+        + '  <div class="podcast-queue-label">Up next in your queue</div>'
+        + '  <div class="podcast-queue-item">'
+        + '    <div style="width:52px;height:52px;border-radius:3px;background:#8e44ad;flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
+        + '      <span style="font-family:var(--font-franklin);font-weight:700;font-size:6px;color:#fff;text-transform:uppercase;text-align:center;line-height:1.2;">Cannon<br/>ball</span>'
+        + '    </div>'
+        + '    <div class="podcast-queue-text">'
+        + '      <span class="podcast-queue-show">Cannonball with Wesley Morris</span>'
+        + '      <span class="podcast-queue-title">The V.M.A.s Are This Weekend. Does Anybody Care?</span>'
+        + '      <span class="podcast-queue-dur">34 min</span>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="podcast-queue-item">'
+        + '    <div style="width:52px;height:52px;border-radius:3px;background:#2c3e50;flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
+        + '      <span style="font-family:var(--font-franklin);font-weight:700;font-size:5px;color:#fff;text-transform:uppercase;text-align:center;line-height:1.2;">The<br/>Interview</span>'
+        + '    </div>'
+        + '    <div class="podcast-queue-text">'
+        + '      <span class="podcast-queue-show">The Interview</span>'
+        + '      <span class="podcast-queue-title">Arundhati Roy on How to Survive in a \u2018Culture of Fear\u2019</span>'
+        + '      <span class="podcast-queue-dur">1 hr 2 min</span>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+
+      var deviceFrame = document.getElementById('device-frame');
+
+      // Wire contextual strip in artwork
+      artworkStrip = document.getElementById('podcast-ctx-strip');
+      artworkStrip.addEventListener('click', showAsk);
+
+      // ── Timeline-aware prompt rotation ──
+      currentMoment = 0;
+      promptInterval = setInterval(function () {
+        currentMoment = (currentMoment + 1) % PODCAST_MOMENTS.length;
+        updateArtworkStripText(PODCAST_MOMENTS[currentMoment].strip);
+        pulseArtworkStrip();
+      }, 8000);
+
+      // ── Bottom nav (Listen active) ──
+      var nav = document.createElement('nav');
+      nav.className = 'bottom-nav';
+      nav.setAttribute('aria-label', 'Primary');
+      nav.innerHTML = ''
+        + '<button class="tab-item" data-tab="home"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/home.svg" alt="" /><span>Home</span></button>'
+        + '<button class="tab-item" data-tab="watch"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/watch.svg" alt="" /><span>Watch</span></button>'
+        + '<button class="tab-item active" data-tab="listen"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/Listen.svg" alt="" /><span>Listen</span></button>'
+        + '<button class="tab-item" data-tab="you"><img class="tab-icon" src="' + ASSET_ROOT + 'Today-tab/Icons/you.svg" alt="" /><span>You</span></button>'
+        + '<button class="tab-item" data-tab="search"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg><span>Search</span></button>';
+      deviceFrame.appendChild(nav);
+
+      searchTabBtn = nav.querySelector('[data-tab="search"]');
+      listenTabBtn = nav.querySelector('[data-tab="listen"]');
+      searchTabBtn.addEventListener('click', function () {
+        if (searchOpen) { hideSearch(); } else { showSearch(); }
+      });
+      listenTabBtn.addEventListener('click', function () {
+        if (searchOpen) hideSearch();
+      });
+
+      // ── Full-screen search overlay ──
+      searchOverlay = document.createElement('div');
+      searchOverlay.className = 'search-overlay';
+      searchOverlay.innerHTML = ''
+        + '<div class="search-overlay-header">'
+        + '  <button class="search-back-btn" aria-label="Close search">'
+        + '    <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>'
+        + '  </button>'
+        + '  <div class="search-input-wrap">'
+        + '    <input class="search-input" type="text" placeholder="Search or ask anything..." />'
+        + '  </div>'
+        + '</div>'
+        + '<div class="search-overlay-body">'
+        + '  <div>'
+        + '    <div class="search-section-label">Try asking</div>'
+        + '    <div class="try-asking-chips">'
+        + '      <button class="try-chip" data-query="What\u2019s the biggest news today?"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>What\u2019s the biggest news today?</button>'
+        + '      <button class="try-chip" data-query="Explain the tariff court ruling"><svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>Explain the tariff court ruling</button>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div>'
+        + '    <div class="search-section-label">Recent</div>'
+        + '    <div class="recent-list">'
+        + '      <div class="recent-item" data-query="Trump tariffs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Trump tariffs</div>'
+        + '      <div class="recent-item" data-query="Democrats midterms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Democrats midterms</div>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>';
+      deviceFrame.appendChild(searchOverlay);
+      searchInput = searchOverlay.querySelector('.search-input');
+
+      searchOverlay.querySelector('.search-back-btn').addEventListener('click', hideSearch);
+      searchOverlay.querySelectorAll('.try-chip').forEach(function (c) {
+        c.addEventListener('click', function () { populateSearch(c.getAttribute('data-query')); });
+      });
+      searchOverlay.querySelectorAll('.recent-item').forEach(function (r) {
+        r.addEventListener('click', function () { populateSearch(r.getAttribute('data-query')); });
+      });
+
+      // ── Ask half-sheet ──
+      askScrim = document.createElement('div');
+      askScrim.className = 'ask-sheet-scrim';
+      deviceFrame.appendChild(askScrim);
+      askScrim.addEventListener('click', hideAsk);
+
+      askSheet = document.createElement('div');
+      askSheet.className = 'ask-sheet';
+      askSheet.innerHTML = ''
+        + '<div class="ask-sheet-handle"></div>'
+        + '<div class="chat-overlay-header">'
+        + '  <span class="chat-overlay-title">Ask about this episode</span>'
+        + '</div>'
+        + '<div class="chat-overlay-body" style="flex:1; overflow-y:auto; padding:16px 16px 8px;"></div>'
+        + '<div class="chat-input-area">'
+        + '  <input class="chat-input" type="text" placeholder="Ask anything about this episode..." />'
+        + '</div>';
+      deviceFrame.appendChild(askSheet);
+      askInput = askSheet.querySelector('.chat-input');
+
+      askSheet.querySelector('.ask-sheet-handle').addEventListener('click', hideAsk);
+    },
+    unmount: function () {
+      searchOpen = false;
+      askOpen = false;
+      if (promptInterval) {
+        clearInterval(promptInterval);
+        promptInterval = null;
+      }
+      currentMoment = 0;
+      var els = document.querySelectorAll('.bottom-nav, .search-overlay, .ask-sheet-scrim, .ask-sheet');
+      els.forEach(function (el) { el.remove(); });
+      searchOverlay = null; askSheet = null; askScrim = null;
+      searchInput = null; askInput = null;
+      searchTabBtn = null; listenTabBtn = null; artworkStrip = null;
+    }
+  });
+})();
+</script>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Initialize Hub
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<script>
+(function () {
+  'use strict';
+  window.__initPrototypeHub();
+})();
+</script>
+
+</body>
+</html>
